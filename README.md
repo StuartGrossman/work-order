@@ -32,25 +32,17 @@ cd work-order
 npm install
 ```
 
-3. Set up environment variables:
-   - Copy `.env.example` to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Update the `.env` file with your Firebase configuration
-   - Never commit the `.env` file to git
+3. Set up Firebase:
+- Create a new Firebase project
+- Enable Firestore Database
+- Add your Firebase configuration to the project
 
-4. Set up Firebase:
-   - Create a new Firebase project
-   - Enable Firestore Database
-   - Add your Firebase configuration to the `.env` file
-
-5. Start the development server:
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-6. Run tests:
+5. Run tests:
 ```bash
 npm test
 ```
@@ -73,28 +65,6 @@ src/
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## Environment Variables
-
-The following environment variables are required:
-
-### Firebase Configuration
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_DATABASE_URL`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
-- `VITE_FIREBASE_MEASUREMENT_ID`
-
-### Amazon Product Advertising API (Optional)
-- `VITE_AMAZON_ACCESS_KEY_ID`
-- `VITE_AMAZON_SECRET_KEY`
-- `VITE_AMAZON_PARTNER_TAG`
-- `VITE_AMAZON_PARTNER_TYPE`
-- `VITE_AMAZON_HOST`
-- `VITE_AMAZON_REGION`
 
 ## License
 
