@@ -5,12 +5,110 @@ import { useCart } from '../contexts/CartContext';
 const Cart = () => {
   const { items, removeItem, updateQuantity, total, clearCart } = useCart();
 
+  // Log cart state whenever it changes
+  console.log('Cart State:', {
+    totalItems: items.length,
+    totalPrice: total.toFixed(2),
+    items: items.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      amazonUrl: item.amazonUrl,
+      subtotal: (item.price * item.quantity).toFixed(2)
+    }))
+  });
+
+  const handleCheckout = () => {
+    console.log('Starting checkout process...');
+    
+    // Filter items that have Amazon URLs or ASINs
+    const amazonItems = items.filter(item => item.amazonUrl);
+    console.log('Found Amazon items:', amazonItems.map(item => ({
+      name: item.name,
+      amazonUrl: item.amazonUrl,
+      quantity: item.quantity
+    })));
+    
+    if (amazonItems.length === 0) {
+      console.warn('No Amazon items found in cart');
+      alert('No Amazon items in cart');
+      return;
+    }
+
+    // Construct Amazon cart URL with AssociateTag
+    let cartUrl = 'https://www.amazon.com/gp/aws/cart/add.html?AssociateTag=your-tag-20';
+    console.log('Initial cart URL:', cartUrl);
+
+    amazonItems.forEach((item, index) => {
+      // Extract ASIN from Amazon URL or use the value directly if it's already an ASIN
+      let asin = item.amazonUrl;
+      
+      // If it's a full URL, try to extract the ASIN
+      if (item.amazonUrl?.includes('amazon.com')) {
+        const asinMatch = item.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/);
+        if (asinMatch) {
+          asin = asinMatch[1];
+        }
+      }
+      
+      if (!asin || !/^[A-Z0-9]{10}$/.test(asin)) {
+        console.error('Invalid ASIN format:', {
+          itemName: item.name,
+          amazonUrl: item.amazonUrl,
+          extractedAsin: asin
+        });
+        return;
+      }
+      
+      console.log('Processing item:', {
+        itemName: item.name,
+        asin,
+        quantity: item.quantity,
+        index
+      });
+
+      const quantity = item.quantity;
+      const itemUrl = `&ASIN.${index + 1}=${asin}&Quantity.${index + 1}=${quantity}`;
+      console.log('Adding to URL:', itemUrl);
+      
+      cartUrl += itemUrl;
+    });
+
+    console.log('Final Amazon cart URL:', cartUrl);
+    window.open(cartUrl, '_blank');
+  };
+
+  const handleQuantityUpdate = (id: string, newQuantity: number) => {
+    console.log('Updating quantity:', {
+      itemId: id,
+      newQuantity,
+      currentItem: items.find(item => item.id === id)
+    });
+    updateQuantity(id, newQuantity);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    const itemToRemove = items.find(item => item.id === id);
+    console.log('Removing item from cart:', {
+      itemId: id,
+      itemName: itemToRemove?.name,
+      itemPrice: itemToRemove?.price
+    });
+    removeItem(id);
+  };
+
+  const handleClearCart = () => {
+    console.log('Clearing cart. Current items:', items.length);
+    clearCart();
+  };
+
   return (
     <Box 
       component="main" 
       sx={{ 
         minHeight: 'calc(100vh - 64px)',
-        pt: { xs: 8, sm: 10 }, // Add more padding at the top
+        pt: { xs: 8, sm: 10 },
         pb: 4,
         bgcolor: 'background.default'
       }}
@@ -52,6 +150,14 @@ const Cart = () => {
                     }}>
                       <Box>
                         <Typography variant="h6">{item.name}</Typography>
+                        {item.amazonUrl && (
+                          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>ASIN:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {item.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/)?.[1] || item.amazonUrl}
+                            </span>
+                          </Typography>
+                        )}
                       </Box>
                       <Box>
                         <Typography variant="body1">
@@ -61,7 +167,7 @@ const Cart = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.id!, item.quantity - 1)}
+                          onClick={() => handleQuantityUpdate(item.id!, item.quantity - 1)}
                         >
                           <RemoveIcon />
                         </IconButton>
@@ -70,11 +176,11 @@ const Cart = () => {
                           type="number"
                           size="small"
                           sx={{ width: 60 }}
-                          onChange={(e) => updateQuantity(item.id!, parseInt(e.target.value) || 1)}
+                          onChange={(e) => handleQuantityUpdate(item.id!, parseInt(e.target.value) || 1)}
                         />
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.id!, item.quantity + 1)}
+                          onClick={() => handleQuantityUpdate(item.id!, item.quantity + 1)}
                         >
                           <AddIcon />
                         </IconButton>
@@ -87,7 +193,7 @@ const Cart = () => {
                       <Box>
                         <IconButton
                           color="error"
-                          onClick={() => removeItem(item.id!)}
+                          onClick={() => handleRemoveItem(item.id!)}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -117,7 +223,7 @@ const Cart = () => {
                 <Button
                   variant="outlined"
                   color="error"
-                  onClick={clearCart}
+                  onClick={handleClearCart}
                 >
                   Clear Cart
                 </Button>
@@ -125,8 +231,9 @@ const Cart = () => {
                   variant="contained"
                   color="primary"
                   disabled={items.length === 0}
+                  onClick={handleCheckout}
                 >
-                  Checkout
+                  Checkout on Amazon
                 </Button>
               </Box>
             </Box>

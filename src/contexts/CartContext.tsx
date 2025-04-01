@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { QRCode } from '../types/qrCode';
 
-interface CartItem extends QRCode {
+export interface CartItem extends QRCode {
   quantity: number;
 }
 
@@ -44,16 +44,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addItem = (item: QRCode) => {
+    console.log('CartContext: Adding item to cart:', item); // Debug log
     setItems(currentItems => {
       const existingItem = currentItems.find(i => i.id === item.id);
       if (existingItem) {
         return currentItems.map(i =>
           i.id === item.id
-            ? { ...i, quantity: i.quantity + 1 }
+            ? { ...i, quantity: i.quantity + (item as CartItem).quantity }
             : i
         );
       }
-      return [...currentItems, { ...item, quantity: 1 }];
+      return [...currentItems, { ...item, quantity: (item as CartItem).quantity }];
     });
   };
 
