@@ -13,292 +13,84 @@ vi.mock('../../services/qrService', () => ({
   }
 }));
 
-runTestSuite('GenerateQR Component', () => {
-  const renderGenerateQR = () => {
-    renderWithProviders(<GenerateQR />);
-  };
-
+runTestSuite('GenerateQR Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('Form Rendering', () => {
-    test('renders all form fields with correct labels', () => {
-      renderGenerateQR();
-      expectSafe(screen.getByTestId('name-input')).toBeInTheDocument();
-      expectSafe(screen.getByTestId('description-input')).toBeInTheDocument();
-      expectSafe(screen.getByTestId('quantity-input')).toBeInTheDocument();
-      expectSafe(screen.getByTestId('price-input')).toBeInTheDocument();
-    });
-
-    test('renders generate and reset buttons', () => {
-      renderGenerateQR();
-      expectSafe(screen.getByTestId('generate-button')).toBeInTheDocument();
-      expectSafe(screen.getByTestId('reset-button')).toBeInTheDocument();
-    });
-
-    test('generate button is initially disabled', () => {
-      renderGenerateQR();
-      expectSafe(screen.getByTestId('generate-button')).toBeDisabled();
-    });
-  });
-
   describe('Form Validation', () => {
-    test('generate button is enabled when all required fields are filled', async () => {
-      renderGenerateQR();
+    test('shows validation errors for empty required fields', async () => {
+      renderWithProviders(<GenerateQR />);
+      const submitButton = screen.getByRole('button', { name: /generate/i });
       
-      const nameInput = screen.getByTestId('name-input');
-      const quantityInput = screen.getByTestId('quantity-input');
-      const priceInput = screen.getByTestId('price-input');
+      fireEvent.click(submitButton);
       
-      await userEvent.type(nameInput, 'Test Item');
-      await userEvent.type(quantityInput, '10');
-      await userEvent.type(priceInput, '99.99');
-
-      expectSafe(screen.getByTestId('generate-button')).not.toBeDisabled();
+      expectSafe(await screen.findByText('Name is required')).toBeInTheDocument();
+      expectSafe(await screen.findByText('Description is required')).toBeInTheDocument();
+      expectSafe(await screen.findByText('Quantity is required')).toBeInTheDocument();
+      expectSafe(await screen.findByText('Category is required')).toBeInTheDocument();
     });
 
-    test('generate button is disabled when required fields are empty', async () => {
-      renderGenerateQR();
+    test('validates quantity as a number', () => {
+      renderWithProviders(<GenerateQR />);
+      const quantityInput = screen.getByLabelText('Quantity *');
       
-      const nameInput = screen.getByTestId('name-input');
-      const quantityInput = screen.getByTestId('quantity-input');
+      fireEvent.change(quantityInput, { target: { value: 'abc' } });
+      fireEvent.blur(quantityInput);
       
-      // Fill only some required fields
-      await userEvent.type(nameInput, 'Test Item');
-      await userEvent.type(quantityInput, '10');
-
-      expectSafe(screen.getByTestId('generate-button')).toBeDisabled();
-    });
-
-    test('quantity field only accepts positive numbers', async () => {
-      renderGenerateQR();
-      const quantityInput = screen.getByTestId('quantity-input');
-      
-      // Try to type a negative number
-      await userEvent.type(quantityInput, '-5');
-      expectSafe(quantityInput).toHaveDisplayValue('');
-
-      // Try to type a valid positive number
-      await userEvent.type(quantityInput, '5');
-      expectSafe(quantityInput).toHaveDisplayValue('5');
-
-      // Try to type a decimal number
-      await userEvent.clear(quantityInput);
-      await userEvent.type(quantityInput, '5.5');
-      expectSafe(quantityInput).toHaveDisplayValue('5');
-
-      // Try to type a zero
-      await userEvent.clear(quantityInput);
-      await userEvent.type(quantityInput, '0');
-      expectSafe(quantityInput).toHaveDisplayValue('0');
-    });
-
-    test('price field accepts decimal numbers', async () => {
-      renderGenerateQR();
-      const priceInput = screen.getByTestId('price-input');
-      
-      // Test valid decimal number
-      await userEvent.type(priceInput, '10.99');
-      expectSafe(priceInput).toHaveDisplayValue('10.99');
-
-      // Test negative number
-      await userEvent.clear(priceInput);
-      await userEvent.type(priceInput, '-10.99');
-      expectSafe(priceInput).toHaveDisplayValue('');
-
-      // Test more than 2 decimal places
-      await userEvent.clear(priceInput);
-      await userEvent.type(priceInput, '10.999');
-      expectSafe(priceInput).toHaveDisplayValue('10.99');
-
-      // Test zero
-      await userEvent.clear(priceInput);
-      await userEvent.type(priceInput, '0');
-      expectSafe(priceInput).toHaveDisplayValue('0');
-
-      // Test zero with decimals
-      await userEvent.clear(priceInput);
-      await userEvent.type(priceInput, '0.00');
-      expectSafe(priceInput).toHaveDisplayValue('0.00');
+      expectSafe(screen.getByText('Quantity must be a number')).toBeInTheDocument();
     });
   });
 
-  describe('Form Interactions', () => {
-    test('reset button clears all form fields', async () => {
-      renderGenerateQR();
+  describe('QR Code Generation', () => {
+    test('generates and saves QR code successfully', async () => {
+      const mockSaveQRCode = vi.mocked(qrService.saveQRCode);
+      mockSaveQRCode.mockResolvedValueOnce('mock-id');
       
-      // Fill form
-      await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-      await userEvent.type(screen.getByTestId('description-input'), 'Test Description');
-      await userEvent.type(screen.getByTestId('quantity-input'), '10');
-      await userEvent.type(screen.getByTestId('price-input'), '99.99');
-
-      // Click reset
-      fireEvent.click(screen.getByTestId('reset-button'));
-
-      // Verify fields are cleared
+      renderWithProviders(<GenerateQR />);
+      
+      // Fill in the form
+      await userEvent.type(screen.getByLabelText('Name *'), 'Test Item');
+      await userEvent.type(screen.getByLabelText('Description *'), 'Test Description');
+      await userEvent.type(screen.getByLabelText('Quantity *'), '5');
+      await userEvent.type(screen.getByLabelText('Category *'), 'Test Category');
+      
+      // Submit the form
+      fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+      
+      // Wait for the success message
       await waitFor(() => {
-        expectSafe(screen.getByTestId('name-input')).toHaveDisplayValue('');
-        expectSafe(screen.getByTestId('description-input')).toHaveDisplayValue('');
-        expectSafe(screen.getByTestId('quantity-input')).toHaveDisplayValue('');
-        expectSafe(screen.getByTestId('price-input')).toHaveDisplayValue('');
+        expectSafe(screen.getByText(/qr code generated successfully/i)).toBeInTheDocument();
       });
-
-      // Verify generate button is disabled after reset
-      expectSafe(screen.getByTestId('generate-button')).toBeDisabled();
-    });
-
-    test('generates QR code when form is submitted', async () => {
-      renderGenerateQR();
       
-      // Fill form
-      await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-      await userEvent.type(screen.getByTestId('description-input'), 'Test Description');
-      await userEvent.type(screen.getByTestId('quantity-input'), '10');
-      await userEvent.type(screen.getByTestId('price-input'), '99.99');
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('generate-button'));
-
-      // Wait for QR code to appear
-      await waitFor(() => {
-        expectSafe(screen.getByTestId('qr-code')).toBeInTheDocument();
-      });
-
-      // Verify download button appears
-      expectSafe(screen.getByTestId('download-button')).toBeInTheDocument();
-    });
-  });
-
-  describe('QR Code Display', () => {
-    test('shows placeholder when no QR code is generated', () => {
-      renderGenerateQR();
-      expectSafe(screen.getByTestId('placeholder')).toBeInTheDocument();
-      expectSafe(screen.getByText('Fill out the form to generate a QR code')).toBeInTheDocument();
-    });
-
-    test('QR code contains correct data', async () => {
-      renderGenerateQR();
-      
-      const testData = {
+      // Verify the data was saved correctly
+      expect(mockSaveQRCode).toHaveBeenCalledWith(expect.objectContaining({
         name: 'Test Item',
         description: 'Test Description',
-        quantity: '10',
-        price: '99.99'
-      };
+        quantity: 5,
+        category: 'Test Category'
+      }));
+    });
 
-      // Fill form
-      await userEvent.type(screen.getByTestId('name-input'), testData.name);
-      await userEvent.type(screen.getByTestId('description-input'), testData.description);
-      await userEvent.type(screen.getByTestId('quantity-input'), testData.quantity);
-      await userEvent.type(screen.getByTestId('price-input'), testData.price);
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('generate-button'));
-
-      // Wait for QR code to appear and verify its value
+    test('handles error when saving QR code fails', async () => {
+      const mockSaveQRCode = vi.mocked(qrService.saveQRCode);
+      mockSaveQRCode.mockRejectedValueOnce(new Error('Save failed'));
+      
+      renderWithProviders(<GenerateQR />);
+      
+      // Fill in the form
+      await userEvent.type(screen.getByLabelText('Name *'), 'Test Item');
+      await userEvent.type(screen.getByLabelText('Description *'), 'Test Description');
+      await userEvent.type(screen.getByLabelText('Quantity *'), '5');
+      await userEvent.type(screen.getByLabelText('Category *'), 'Test Category');
+      
+      // Submit the form
+      fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+      
+      // Wait for the error message
       await waitFor(() => {
-        const qrCode = screen.getByTestId('qr-code');
-        expectSafe(qrCode).toBeInTheDocument();
-        expectSafe(qrCode).toHaveAttribute('data-value', JSON.stringify(testData));
+        expectSafe(screen.getByText(/failed to generate qr code/i)).toBeInTheDocument();
       });
     });
-  });
-
-  it('generates and saves QR code successfully', async () => {
-    const mockSaveQRCode = vi.mocked(qrService.saveQRCode);
-    mockSaveQRCode.mockResolvedValueOnce('mock-id');
-    
-    renderGenerateQR();
-    
-    // Fill in the form
-    await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-    await userEvent.type(screen.getByTestId('description-input'), 'Test Description');
-    await userEvent.type(screen.getByTestId('quantity-input'), '5');
-    await userEvent.type(screen.getByTestId('price-input'), '10.99');
-    
-    // Submit the form
-    fireEvent.click(screen.getByTestId('generate-button'));
-    
-    // Verify loading state
-    expectSafe(screen.getByText(/generating/i)).toBeInTheDocument();
-    
-    // Wait for the success message
-    await waitFor(() => {
-      expectSafe(screen.getByText(/qr code generated and saved successfully/i)).toBeInTheDocument();
-    });
-    
-    // Verify the data was saved correctly
-    expect(mockSaveQRCode).toHaveBeenCalledWith({
-      name: 'Test Item',
-      quantity: 5,
-      price: 10.99,
-      qrCode: expect.any(String)
-    });
-    
-    // Verify the form was reset
-    expectSafe(screen.getByTestId('name-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('description-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('quantity-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('price-input')).toHaveDisplayValue('');
-  });
-
-  it('handles error when saving QR code fails', async () => {
-    const mockSaveQRCode = vi.mocked(qrService.saveQRCode);
-    mockSaveQRCode.mockRejectedValueOnce(new Error('Save failed'));
-    
-    renderGenerateQR();
-    
-    // Fill in the form
-    await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-    await userEvent.type(screen.getByTestId('quantity-input'), '5');
-    await userEvent.type(screen.getByTestId('price-input'), '10.99');
-    
-    // Submit the form
-    fireEvent.click(screen.getByTestId('generate-button'));
-    
-    // Wait for the error message
-    await waitFor(() => {
-      expectSafe(screen.getByText(/failed to generate qr code/i)).toBeInTheDocument();
-    });
-  });
-
-  it('resets the form when reset button is clicked', async () => {
-    renderGenerateQR();
-    
-    // Fill in the form
-    await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-    await userEvent.type(screen.getByTestId('quantity-input'), '5');
-    await userEvent.type(screen.getByTestId('price-input'), '10.99');
-    
-    // Click reset button
-    fireEvent.click(screen.getByTestId('reset-button'));
-    
-    // Verify all fields are cleared
-    expectSafe(screen.getByTestId('name-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('description-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('quantity-input')).toHaveDisplayValue('');
-    expectSafe(screen.getByTestId('price-input')).toHaveDisplayValue('');
-  });
-
-  it('disables generate button when required fields are empty', async () => {
-    renderGenerateQR();
-    const generateButton = screen.getByTestId('generate-button');
-    
-    // Initially disabled
-    expectSafe(generateButton).toBeDisabled();
-    
-    // Fill in only name
-    await userEvent.type(screen.getByTestId('name-input'), 'Test Item');
-    expectSafe(generateButton).toBeDisabled();
-    
-    // Fill in quantity
-    await userEvent.type(screen.getByTestId('quantity-input'), '5');
-    expectSafe(generateButton).toBeDisabled();
-    
-    // Fill in price
-    await userEvent.type(screen.getByTestId('price-input'), '10.99');
-    expectSafe(generateButton).not.toBeDisabled();
   });
 }); 

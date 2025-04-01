@@ -6,21 +6,40 @@ const Cart = () => {
   const { items, removeItem, updateQuantity, total, clearCart } = useCart();
 
   return (
-    <Box component="main" sx={{ minHeight: 'calc(100vh - 64px)', py: 4 }}>
+    <Box 
+      component="main" 
+      sx={{ 
+        minHeight: 'calc(100vh - 64px)',
+        pt: { xs: 8, sm: 10 }, // Add more padding at the top
+        pb: 4,
+        bgcolor: 'background.default'
+      }}
+    >
       <Container maxWidth="lg">
-        <Typography variant="h4" gutterBottom>
+        <Typography 
+          variant="h4" 
+          gutterBottom 
+          sx={{ 
+            mb: 4,
+            fontWeight: 600
+          }}
+        >
           Shopping Cart
         </Typography>
 
         {items.length === 0 ? (
-          <Typography variant="body1" color="text.secondary">
-            Your cart is empty
-          </Typography>
+          <Card>
+            <CardContent>
+              <Typography variant="body1" color="text.secondary" align="center">
+                Your cart is empty
+              </Typography>
+            </CardContent>
+          </Card>
         ) : (
           <>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {items.map((item) => (
-                <Card key={item.id}>
+                <Card key={item.id} elevation={2}>
                   <CardContent>
                     <Box sx={{ 
                       display: 'grid', 
@@ -33,11 +52,6 @@ const Cart = () => {
                     }}>
                       <Box>
                         <Typography variant="h6">{item.name}</Typography>
-                        {item.description && (
-                          <Typography variant="body2" color="text.secondary">
-                            {item.description}
-                          </Typography>
-                        )}
                       </Box>
                       <Box>
                         <Typography variant="body1">
@@ -84,8 +98,19 @@ const Cart = () => {
               ))}
             </Box>
 
-            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h5">
+            <Box 
+              sx={{ 
+                mt: 4, 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                p: 3,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                boxShadow: 1
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
                 Total: ${total.toFixed(2)}
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
@@ -99,10 +124,7 @@ const Cart = () => {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={() => {
-                    // TODO: Implement checkout
-                    console.log('Checkout clicked');
-                  }}
+                  disabled={items.length === 0}
                 >
                   Checkout
                 </Button>

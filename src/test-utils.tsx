@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
+import { CartProvider } from './contexts/CartContext';
 
 const theme = createTheme();
 
@@ -14,7 +15,9 @@ export const renderWithProviders = (ui: React.ReactElement, options: RenderOptio
   
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <ThemeProvider theme={theme}>
-      {children}
+      <CartProvider>
+        {children}
+      </CartProvider>
     </ThemeProvider>
   );
 

@@ -7,12 +7,14 @@ import { Download as DownloadIcon } from '@mui/icons-material';
 import { qrService } from '../services/qrService';
 import { QRCodeSVG } from 'qrcode.react';
 import { QRCode } from '../types/qrCode';
+import { useNavigate } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 12;
 
 const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
   const [qrCodes, setQrCodes] = useState<QRCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,10 @@ const Home = () => {
     } catch (err) {
       console.error('Error downloading QR code:', err);
     }
+  };
+
+  const handleCardClick = (codeId: string) => {
+    navigate(`/id/${codeId}`);
   };
 
   const features = [
@@ -397,11 +403,13 @@ const Home = () => {
                     <Grid item key={code.id} xs={12} sm={6} md={4}>
                       <Card 
                         elevation={2}
+                        onClick={() => code.id && handleCardClick(code.id)}
                         sx={{ 
                           height: '100%',
                           display: 'flex',
                           flexDirection: 'column',
                           transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                          cursor: 'pointer',
                           '&:hover': {
                             transform: 'translateY(-4px)',
                             boxShadow: 4
@@ -441,7 +449,10 @@ const Home = () => {
                           <Button
                             variant="contained"
                             startIcon={<DownloadIcon />}
-                            onClick={() => handleDownload(code)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(code);
+                            }}
                             sx={{ mt: 'auto' }}
                           >
                             Download QR

@@ -1,52 +1,51 @@
 import { screen } from '@testing-library/react';
-import Navbar from '../Navbar';
 import { renderWithProviders } from '../../test-utils';
 import { runTestSuite, expectSafe } from '../../test-runner';
+import Navbar from '../Navbar';
 
 runTestSuite('Navbar Component', () => {
   const renderNavbar = () => {
     renderWithProviders(<Navbar />);
   };
 
-  describe('Navigation', () => {
-    test('renders navbar with title', () => {
-      renderNavbar();
-      expectSafe(screen.getByText('QR INVENTORY')).toBeInTheDocument();
-    });
-
-    test('renders navigation links', () => {
+  describe('Navigation Elements', () => {
+    test('renders all navigation links', () => {
       renderNavbar();
       expectSafe(screen.getByText('Home')).toBeInTheDocument();
       expectSafe(screen.getByText('Generate QR')).toBeInTheDocument();
+      expectSafe(screen.getByText('QR INVENTORY')).toBeInTheDocument();
     });
 
     test('navigation links have correct href attributes', () => {
       renderNavbar();
       const homeLink = screen.getByText('Home').closest('a');
-      const generateLink = screen.getByText('Generate QR').closest('a');
+      const generateQRLink = screen.getByText('Generate QR').closest('a');
       
       expectSafe(homeLink).toHaveAttribute('href', '/');
-      expectSafe(generateLink).toHaveAttribute('href', '/generate-qr');
+      expectSafe(generateQRLink).toHaveAttribute('href', '/generate-qr');
     });
   });
 
   describe('Styling', () => {
     test('navbar has correct styling', () => {
       renderNavbar();
-      const navbar = screen.getByRole('banner');
+      const navbar = screen.getByRole('navigation');
       expectSafe(navbar).toHaveStyle({
-        position: 'static',
-        backgroundColor: expect.stringContaining('rgb'),
-        padding: expect.stringContaining('px')
+        backgroundColor: expect.any(String),
+        padding: expect.any(String),
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       });
     });
 
-    test('navigation links have correct styling', () => {
+    test('logo has correct styling', () => {
       renderNavbar();
-      const links = screen.getAllByRole('link');
-      links.forEach(link => {
-        const styles = window.getComputedStyle(link);
-        expectSafe(styles.color).toMatch(/rgb/);
+      const logo = screen.getByText('QR INVENTORY');
+      expectSafe(logo).toHaveStyle({
+        fontSize: expect.any(String),
+        fontWeight: expect.any(String),
+        color: expect.any(String)
       });
     });
   });

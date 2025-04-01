@@ -10,11 +10,13 @@ import {
   CircularProgress,
   Alert,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Grid
 } from '@mui/material';
 import { qrService } from '../services/qrService';
 import { useCart } from '../contexts/CartContext';
 import { QRCode } from '../types/qrCode';
+import { QRCodeSVG } from 'qrcode.react';
 
 const QRCodeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -78,7 +80,8 @@ const QRCodeDetail: React.FC = () => {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center',
-        minHeight: 'calc(100vh - 64px)'
+        minHeight: 'calc(100vh - 64px)',
+        pt: { xs: 8, sm: 10 }
       }}>
         <CircularProgress />
       </Box>
@@ -87,80 +90,115 @@ const QRCodeDetail: React.FC = () => {
 
   if (error || !qrCode) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 4 }}>
+      <Container maxWidth="sm" sx={{ pt: { xs: 8, sm: 10 } }}>
         <Alert severity="error">{error || 'QR code not found'}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: { xs: 2, md: 3 },
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}
-      >
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom
+    <Box 
+      component="main"
+      sx={{ 
+        minHeight: 'calc(100vh - 64px)',
+        pt: { xs: 8, sm: 10 },
+        pb: 4,
+        bgcolor: 'background.default'
+      }}
+    >
+      <Container maxWidth="lg">
+        <Paper 
+          elevation={3} 
           sx={{ 
-            textAlign: 'center',
-            fontSize: { xs: '1.75rem', md: '2.125rem' }
+            p: { xs: 2, sm: 4 },
+            borderRadius: 2
           }}
         >
-          {qrCode.name}
-        </Typography>
-
-        <Typography 
-          variant="h5" 
-          color="primary"
-          gutterBottom
-          sx={{ 
-            textAlign: 'center',
-            fontSize: { xs: '1.5rem', md: '1.75rem' }
-          }}
-        >
-          ${qrCode.price.toFixed(2)}
-        </Typography>
-
-        <Box sx={{ width: '100%', mt: 3 }}>
-          <TextField
-            fullWidth
-            label="Quantity"
-            type="number"
-            value={quantity}
-            onChange={handleQuantityChange}
-            inputProps={{ 
-              min: "1",
-              "data-testid": "quantity-input",
-              style: { fontSize: isMobile ? '16px' : 'inherit' }
-            }}
-            error={!!error && error.includes('quantity')}
-            helperText={error && error.includes('quantity') ? error : ''}
-          />
-        </Box>
-
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleAddToCart}
-          fullWidth
-          sx={{ 
-            mt: 3,
-            height: { xs: '48px', md: '40px' },
-            fontSize: { xs: '1rem', md: '0.875rem' }
-          }}
-          data-testid="add-to-cart-button"
-        >
-          Add to Cart
-        </Button>
-      </Paper>
-    </Container>
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={6}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    backgroundColor: 'white',
+                    p: 3,
+                    borderRadius: 2,
+                    boxShadow: 1
+                  }}
+                >
+                  <QRCodeSVG
+                    value={qrCode.qrCode || JSON.stringify({
+                      url: `${window.location.origin}/id/${qrCode.id}`,
+                      id: qrCode.id,
+                      name: qrCode.name,
+                      price: qrCode.price
+                    })}
+                    size={250}
+                    level="H"
+                    includeMargin
+                  />
+                </Box>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                      const url = canvas.toDataURL('image/png');
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `${qrCode.name.toLowerCase().replace(/\s+/g, '-')}-qr.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                >
+                  Download QR Code
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+                  {qrCode.name}
+                </Typography>
+                <Typography variant="h5" color="primary" gutterBottom>
+                  ${qrCode.price.toFixed(2)}
+                </Typography>
+                {qrCode.description && (
+                  <Typography variant="body1" color="text.secondary">
+                    {qrCode.description}
+                  </Typography>
+                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+                  <TextField
+                    label="Quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={handleQuantityChange}
+                    sx={{ width: 120 }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleAddToCart}
+                    disabled={!quantity || parseInt(quantity) <= 0}
+                  >
+                    Add to Cart
+                  </Button>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 
