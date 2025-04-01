@@ -38,29 +38,42 @@ const GenerateQR: React.FC = () => {
         throw new Error('Please enter a valid price');
       }
 
-      const newQRCode: Omit<QRCode, 'id'> = {
+      // Create QR code data first
+      const qrData = {
         name: formData.name,
         price: price,
-        qrCode: '',
         createdAt: new Date()
+      };
+
+      // Generate a temporary ID for the QR code data
+      const tempId = Math.random().toString(36).substring(7);
+      const qrCodeString = JSON.stringify({
+        url: `${window.location.origin}/id/${tempId}`,
+        id: tempId,
+        name: formData.name,
+        price: price
+      });
+
+      // Save to database with the QR code string
+      const newQRCode: Omit<QRCode, 'id'> = {
+        ...qrData,
+        qrCode: qrCodeString
       };
 
       const id = await qrService.saveQRCode(newQRCode);
       
-      // Create QR code data with full URL
-      const qrData = {
+      // Update the QR code string with the actual ID
+      const finalQrCodeString = JSON.stringify({
         url: `${window.location.origin}/id/${id}`,
         id,
         name: formData.name,
         price: price
-      };
+      });
 
-      const qrCodeString = JSON.stringify(qrData);
-      setQrCode(qrCodeString);
-
-      // Update the QR code with the string
-      await qrService.updateQRCode(id, { qrCode: qrCodeString });
-
+      // Update the QR code with the final string
+      await qrService.updateQRCode(id, { qrCode: finalQrCodeString });
+      
+      setQrCode(finalQrCodeString);
       setSuccess(true);
       setFormData({ name: '', price: '' });
     } catch (err) {

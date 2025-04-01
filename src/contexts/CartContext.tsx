@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { QRCode } from '../types/qrCode';
 
 interface CartItem extends QRCode {
   quantity: number;
 }
 
-interface CartContextType {
+export interface CartContextType {
   items: CartItem[];
   addItem: (item: QRCode) => void;
   removeItem: (id: string) => void;
@@ -14,10 +14,34 @@ interface CartContextType {
   total: number;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+export const CartContext = createContext<CartContextType | undefined>(undefined);
+
+const CART_STORAGE_KEY = 'cart_items';
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  // Initialize state from localStorage
+  const [items, setItems] = useState<CartItem[]>(() => {
+    const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        // Convert string dates back to Date objects
+        return parsedCart.map((item: any) => ({
+          ...item,
+          createdAt: new Date(item.createdAt)
+        }));
+      } catch (error) {
+        console.error('Error parsing cart from localStorage:', error);
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Save to localStorage whenever items change
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
 
   const addItem = (item: QRCode) => {
     setItems(currentItems => {

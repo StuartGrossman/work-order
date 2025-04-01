@@ -5,19 +5,19 @@ import { runTestSuite, expectSafe } from '../test-runner';
 
 runTestSuite('App Component', () => {
   const renderApp = () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />, { withRouter: false });
   };
 
   describe('Routing', () => {
     test('renders without crashing', () => {
       renderApp();
-      expectSafe(screen.getByText('QR INVENTORY')).toBeInTheDocument();
+      expectSafe(screen.getByText('QR Inventory')).toBeInTheDocument();
     });
 
     test('renders navigation buttons', () => {
       renderApp();
-      expectSafe(screen.getByText('Home')).toBeInTheDocument();
       expectSafe(screen.getByText('Generate QR')).toBeInTheDocument();
+      expectSafe(screen.getByText('Cart')).toBeInTheDocument();
     });
 
     test('renders main content', () => {
@@ -31,9 +31,9 @@ runTestSuite('App Component', () => {
       renderApp();
       const appContainer = screen.getByRole('main');
       expectSafe(appContainer).toHaveStyle({
-        minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        minHeight: '100vh'
       });
     });
   });

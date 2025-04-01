@@ -21,11 +21,22 @@ export const renderWithProviders = (ui: React.ReactElement, options: RenderOptio
     </ThemeProvider>
   );
 
-  const RouterWrapper = ({ children }: { children: React.ReactNode }) => (
-    <BrowserRouter>
-      <Wrapper>{children}</Wrapper>
-    </BrowserRouter>
-  );
+  const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
+    // Check if the children already have a Router
+    const hasRouter = React.Children.toArray(children).some(
+      child => React.isValidElement(child) && child.type === BrowserRouter
+    );
+
+    if (hasRouter) {
+      return <Wrapper>{children}</Wrapper>;
+    }
+
+    return (
+      <BrowserRouter>
+        <Wrapper>{children}</Wrapper>
+      </BrowserRouter>
+    );
+  };
 
   const wrapper = withRouter ? RouterWrapper : Wrapper;
 

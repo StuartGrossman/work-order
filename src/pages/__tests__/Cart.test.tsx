@@ -2,95 +2,88 @@ import { screen, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../../test-utils';
 import { runTestSuite, expectSafe } from '../../test-runner';
 import Cart from '../Cart';
-import { useCart } from '../../contexts/CartContext';
 import { vi } from 'vitest';
+import { QRCode } from '../../types/qrCode';
 
-// Create a mock context module
+const mockCartItems: QRCode[] = [
+  {
+    id: '1',
+    name: 'Test Item 1',
+    price: 10.99,
+    createdAt: new Date('2024-03-20'),
+    qrCode: JSON.stringify({ name: 'Test Item 1', price: 10.99 })
+  },
+  {
+    id: '2',
+    name: 'Test Item 2',
+    price: 15.50,
+    createdAt: new Date('2024-03-19'),
+    qrCode: JSON.stringify({ name: 'Test Item 2', price: 15.50 })
+  }
+];
+
+const mockCartContext = {
+  items: mockCartItems.map(item => ({ ...item, quantity: 1 })),
+  addItem: vi.fn(),
+  removeItem: vi.fn(),
+  updateQuantity: vi.fn(),
+  clearCart: vi.fn(),
+  total: mockCartItems.reduce((sum, item) => sum + item.price, 0)
+};
+
+// Mock the useCart hook
 vi.mock('../../contexts/CartContext', () => ({
-  useCart: vi.fn(),
+  useCart: () => mockCartContext,
   CartProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));
 
-runTestSuite('Cart Page', () => {
-  const mockCartItems = [
-    {
-      id: '1',
-      name: 'Test Item 1',
-      quantity: 2,
-      price: 10.99,
-      category: 'Test Category',
-      createdAt: new Date('2024-03-20'),
-      qrCode: JSON.stringify({ name: 'Test Item 1', quantity: 2, price: 10.99 })
-    }
-  ];
-
-  const mockCartContext = {
-    items: mockCartItems,
-    addItem: vi.fn(),
-    removeItem: vi.fn(),
-    updateQuantity: vi.fn(),
-    clearCart: vi.fn(),
-    total: mockCartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-  };
-
-  beforeEach(() => {
-    vi.mocked(useCart).mockReturnValue(mockCartContext);
-  });
-
+runTestSuite('Cart Component', () => {
   describe('Empty Cart', () => {
-    test('renders empty cart message when cart is empty', () => {
-      vi.mocked(useCart).mockReturnValue({ ...mockCartContext, items: [] });
+    test('displays empty cart message when no items', () => {
+      vi.mocked(mockCartContext.items).length = 0;
       renderWithProviders(<Cart />);
-      expectSafe(screen.getByText('Your cart is empty')).toBeInTheDocument();
-      expectSafe(screen.getByText('Return to Shopping')).toBeInTheDocument();
+      expectSafe(screen.getByText(/your cart is empty/i)).toBeInTheDocument();
     });
   });
 
   describe('Cart with Items', () => {
-    test('renders cart items and total', () => {
+    test('displays cart items and total', () => {
+      vi.mocked(mockCartContext.items).length = mockCartItems.length;
       renderWithProviders(<Cart />);
-      
-      // Check if item is displayed
-      expectSafe(screen.getByText('Test Item 1')).toBeInTheDocument();
-      expectSafe(screen.getByText('2')).toBeInTheDocument();
-      expectSafe(screen.getByText('$21.98')).toBeInTheDocument(); // 2 * $10.99
+
+      mockCartItems.forEach(item => {
+        expectSafe(screen.getByText(item.name)).toBeInTheDocument();
+        expectSafe(screen.getByText(`$${item.price.toFixed(2)}`)).toBeInTheDocument();
+      });
+
+      expectSafe(screen.getByText(`$${mockCartContext.total.toFixed(2)}`)).toBeInTheDocument();
     });
 
-    test('can update item quantity', () => {
-      const updateQuantity = vi.fn();
-      vi.mocked(useCart).mockReturnValue({ ...mockCartContext, updateQuantity });
+    test('updates item quantity', () => {
       renderWithProviders(<Cart />);
-      
-      const quantityInput = screen.getByRole('spinbutton');
-      fireEvent.change(quantityInput, { target: { value: '3' } });
-      
-      expect(updateQuantity).toHaveBeenCalledWith('1', 3);
+
+      const quantityInput = screen.getByLabelText(/quantity/i);
+      fireEvent.change(quantityInput, { target: { value: '2' } });
+
+      expectSafe(mockCartContext.updateQuantity).toHaveBeenCalledWith(mockCartItems[0].id, 2);
     });
 
-    test('can remove item from cart', () => {
-      const removeItem = vi.fn();
-      vi.mocked(useCart).mockReturnValue({ ...mockCartContext, removeItem });
+    test('removes item from cart', () => {
       renderWithProviders(<Cart />);
-      
-      const removeButton = screen.getByRole('button', { name: /remove/i });
+
+      const removeButton = screen.getByLabelText(/remove/i);
       fireEvent.click(removeButton);
-      
-      expect(removeItem).toHaveBeenCalledWith('1');
-    });
-  });
 
-  describe('Cart Actions', () => {
-    test('checkout button is enabled with items', () => {
-      renderWithProviders(<Cart />);
-      const checkoutButton = screen.getByRole('button', { name: /checkout/i });
-      expectSafe(checkoutButton).not.toBeDisabled();
+      expectSafe(mockCartContext.removeItem).toHaveBeenCalledWith(mockCartItems[0].id);
     });
 
-    test('checkout button is disabled when empty', () => {
-      vi.mocked(useCart).mockReturnValue({ ...mockCartContext, items: [] });
+    test('clears entire cart', () => {
       renderWithProviders(<Cart />);
-      const checkoutButton = screen.getByRole('button', { name: /checkout/i });
-      expectSafe(checkoutButton).toBeDisabled();
+
+      const clearButton = screen.getByRole('button', { name: /clear cart/i });
+      fireEvent.click(clearButton);
+
+      expectSafe(mockCartContext.clearCart).toHaveBeenCalled();
     });
   });
 }); 

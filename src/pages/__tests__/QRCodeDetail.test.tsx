@@ -1,105 +1,131 @@
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test-utils';
 import { runTestSuite, expectSafe } from '../../test-runner';
 import QRCodeDetail from '../QRCodeDetail';
-import { useCart } from '../../contexts/CartContext';
 import { qrService } from '../../services/qrService';
 import { vi } from 'vitest';
 
-// Mock the qrService and cart context
+// Mock the qrService
 vi.mock('../../services/qrService', () => ({
   qrService: {
     getQRCodeById: vi.fn()
   }
 }));
 
+const mockQRCode = {
+  id: 'test-id',
+  name: 'Test Item',
+  price: 10.99,
+  createdAt: new Date('2024-03-20'),
+  qrCode: JSON.stringify({ name: 'Test Item', price: 10.99 })
+};
+
+const mockCartContext = {
+  items: [],
+  addItem: vi.fn(),
+  removeItem: vi.fn(),
+  updateQuantity: vi.fn(),
+  clearCart: vi.fn(),
+  total: 0
+};
+
+// Mock the useCart hook
 vi.mock('../../contexts/CartContext', () => ({
-  useCart: vi.fn(),
+  useCart: () => mockCartContext,
   CartProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));
 
-runTestSuite('QRCodeDetail Page', () => {
-  const mockQRCode = {
-    id: '1',
-    name: 'Test Item',
-    description: 'Test Description',
-    quantity: 10,
-    category: 'Test Category',
-    price: 10.99,
-    createdAt: new Date('2024-03-20'),
-    qrCode: JSON.stringify({ name: 'Test Item', quantity: 10, price: 10.99 })
-  };
+// Mock useParams and useNavigate
+vi.mock('react-router-dom', () => ({
+  useParams: () => ({ id: 'test-id' }),
+  useNavigate: () => vi.fn()
+}));
 
-  const mockCartContext = {
-    items: [],
-    addItem: vi.fn(),
-    removeItem: vi.fn(),
-    updateQuantity: vi.fn(),
-    clearCart: vi.fn(),
-    total: 0
-  };
-
+runTestSuite('QRCodeDetail Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useCart).mockReturnValue(mockCartContext);
-    vi.mocked(qrService.getQRCodeById).mockResolvedValue(mockQRCode);
   });
 
   describe('Loading State', () => {
-    test('renders loading state initially', () => {
+    test('shows loading spinner while fetching QR code', () => {
       vi.mocked(qrService.getQRCodeById).mockImplementation(() => new Promise(() => {}));
       renderWithProviders(<QRCodeDetail />);
-      expectSafe(screen.getByText(/loading/i)).toBeInTheDocument();
+      expectSafe(screen.getByRole('progressbar')).toBeInTheDocument();
     });
   });
 
   describe('Error State', () => {
-    test('renders error message when item not found', async () => {
-      vi.mocked(qrService.getQRCodeById).mockRejectedValue(new Error('Not found'));
+    test('displays error message when QR code is not found', async () => {
+      vi.mocked(qrService.getQRCodeById).mockRejectedValueOnce(new Error('Not found'));
       renderWithProviders(<QRCodeDetail />);
-      expectSafe(await screen.findByText(/item not found/i)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expectSafe(screen.getByText('Failed to load QR code details')).toBeInTheDocument();
+      });
     });
   });
 
   describe('Item Details', () => {
-    test('renders item details when loaded', async () => {
+    test('displays QR code details when loaded', async () => {
+      vi.mocked(qrService.getQRCodeById).mockResolvedValueOnce(mockQRCode);
       renderWithProviders(<QRCodeDetail />);
-      
-      expectSafe(await screen.findByText(mockQRCode.name)).toBeInTheDocument();
-      expectSafe(screen.getByText(mockQRCode.description)).toBeInTheDocument();
-      expectSafe(screen.getByText(`Quantity: ${mockQRCode.quantity}`)).toBeInTheDocument();
-      expectSafe(screen.getByText(`Category: ${mockQRCode.category}`)).toBeInTheDocument();
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expectSafe(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+      });
+
+      // Check for item details
+      expectSafe(screen.getByText(mockQRCode.name)).toBeInTheDocument();
+      expectSafe(screen.getByText(`$${mockQRCode.price.toFixed(2)}`)).toBeInTheDocument();
     });
   });
 
-  describe('Cart Interactions', () => {
-    test('can add item to cart', async () => {
-      const addItem = vi.fn();
-      vi.mocked(useCart).mockReturnValue({ ...mockCartContext, addItem });
-      
+  describe('Cart Integration', () => {
+    test('adds item to cart with correct quantity', async () => {
+      vi.mocked(qrService.getQRCodeById).mockResolvedValueOnce(mockQRCode);
       renderWithProviders(<QRCodeDetail />);
-      
-      const quantityInput = await screen.findByRole('spinbutton');
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expectSafe(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+      });
+
+      // Set quantity
+      const quantityInput = screen.getByRole('spinbutton');
       fireEvent.change(quantityInput, { target: { value: '2' } });
-      
-      const addToCartButton = screen.getByRole('button', { name: /add to cart/i });
-      fireEvent.click(addToCartButton);
-      
-      expect(addItem).toHaveBeenCalledWith(expect.objectContaining({
+
+      // Add to cart
+      const addButton = screen.getByRole('button', { name: /add to cart/i });
+      fireEvent.click(addButton);
+
+      expectSafe(mockCartContext.addItem).toHaveBeenCalledWith({
         id: mockQRCode.id,
         name: mockQRCode.name,
+        price: mockQRCode.price,
         quantity: 2
-      }));
+      });
     });
 
-    test('add to cart button is disabled when quantity is 0', async () => {
+    test('shows error for invalid quantity', async () => {
+      vi.mocked(qrService.getQRCodeById).mockResolvedValueOnce(mockQRCode);
       renderWithProviders(<QRCodeDetail />);
-      
-      const quantityInput = await screen.findByRole('spinbutton');
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expectSafe(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+      });
+
+      // Set invalid quantity
+      const quantityInput = screen.getByRole('spinbutton');
       fireEvent.change(quantityInput, { target: { value: '0' } });
-      
-      const addToCartButton = screen.getByRole('button', { name: /add to cart/i });
-      expectSafe(addToCartButton).toBeDisabled();
+
+      // Try to add to cart
+      const addButton = screen.getByRole('button', { name: /add to cart/i });
+      fireEvent.click(addButton);
+
+      expectSafe(screen.getByText('Please enter a valid quantity')).toBeInTheDocument();
+      expectSafe(mockCartContext.addItem).not.toHaveBeenCalled();
     });
   });
 }); 

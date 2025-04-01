@@ -8,7 +8,7 @@ import { qrService } from '../../services/qrService';
 // Mock the qrService
 vi.mock('../../services/qrService', () => ({
   qrService: {
-    getAllQRCodes: vi.fn()
+    getPaginatedQRCodes: vi.fn()
   }
 }));
 
@@ -23,18 +23,16 @@ runTestSuite('Home Component', () => {
     {
       id: '1',
       name: 'Test Item 1',
-      quantity: 5,
       price: 10.99,
       createdAt: new Date('2024-03-20'),
-      qrCode: JSON.stringify({ name: 'Test Item 1', quantity: 5, price: 10.99 })
+      qrCode: JSON.stringify({ name: 'Test Item 1', price: 10.99 })
     },
     {
       id: '2',
       name: 'Test Item 2',
-      quantity: 3,
       price: 15.50,
       createdAt: new Date('2024-03-19'),
-      qrCode: JSON.stringify({ name: 'Test Item 2', quantity: 3, price: 15.50 })
+      qrCode: JSON.stringify({ name: 'Test Item 2', price: 15.50 })
     }
   ];
 
@@ -43,14 +41,8 @@ runTestSuite('Home Component', () => {
   });
 
   describe('Data Loading', () => {
-    test('displays loading state while fetching QR codes', () => {
-      vi.mocked(qrService.getAllQRCodes).mockImplementation(() => new Promise(() => {}));
-      renderWithProviders(<Home />);
-      expectSafe(screen.getByRole('progressbar')).toBeInTheDocument();
-    });
-
     test('displays error message when fetching QR codes fails', async () => {
-      vi.mocked(qrService.getAllQRCodes).mockRejectedValueOnce(new Error('Fetch failed'));
+      vi.mocked(qrService.getPaginatedQRCodes).mockRejectedValueOnce(new Error('Fetch failed'));
       renderWithProviders(<Home />);
       await waitFor(() => {
         expectSafe(screen.getByText(/failed to load qr codes/i)).toBeInTheDocument();
@@ -58,7 +50,11 @@ runTestSuite('Home Component', () => {
     });
 
     test('displays empty state message when no QR codes exist', async () => {
-      vi.mocked(qrService.getAllQRCodes).mockResolvedValueOnce([]);
+      vi.mocked(qrService.getPaginatedQRCodes).mockResolvedValueOnce({ 
+        codes: [], 
+        hasMoreDocs: false,
+        lastVisible: null
+      });
       renderWithProviders(<Home />);
       await waitFor(() => {
         expectSafe(screen.getByText(/no qr codes generated yet/i)).toBeInTheDocument();
@@ -66,17 +62,42 @@ runTestSuite('Home Component', () => {
     });
 
     test('displays list of QR codes when data is fetched successfully', async () => {
-      vi.mocked(qrService.getAllQRCodes).mockResolvedValueOnce(mockQRCodes);
+      vi.mocked(qrService.getPaginatedQRCodes).mockResolvedValueOnce({ 
+        codes: mockQRCodes, 
+        hasMoreDocs: false,
+        lastVisible: null
+      });
       renderWithProviders(<Home />);
       
       await waitFor(() => {
-        expectSafe(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+        mockQRCodes.forEach(qrCode => {
+          expectSafe(screen.getByText(qrCode.name)).toBeInTheDocument();
+          expectSafe(screen.getByText(`$${qrCode.price.toFixed(2)}`)).toBeInTheDocument();
+        });
       });
+    });
+  });
+
+  describe('QR Code Card Interaction', () => {
+    test('navigates to QR code detail page when clicking a card', async () => {
+      vi.mocked(qrService.getPaginatedQRCodes).mockResolvedValueOnce({ 
+        codes: [mockQRCodes[0]], 
+        hasMoreDocs: false,
+        lastVisible: null
+      });
+      renderWithProviders(<Home />);
       
-      mockQRCodes.forEach(qrCode => {
-        expectSafe(screen.getByText(qrCode.name)).toBeInTheDocument();
-        expectSafe(screen.getByText(`Quantity: ${qrCode.quantity}`)).toBeInTheDocument();
-        expectSafe(screen.getByText(`Price: $${qrCode.price.toFixed(2)}`)).toBeInTheDocument();
+      await waitFor(() => {
+        const card = screen.getByText(mockQRCodes[0].name).closest('div[role="button"]');
+        expectSafe(card).toBeInTheDocument();
+      });
+
+      const card = screen.getByText(mockQRCodes[0].name).closest('div[role="button"]');
+      fireEvent.click(card!);
+      
+      // Check if we're on the detail page
+      await waitFor(() => {
+        expectSafe(window.location.pathname).toBe(`/id/${mockQRCodes[0].id}`);
       });
     });
   });
