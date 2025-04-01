@@ -1,10 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material';
-import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import GenerateQR from './pages/GenerateQR';
+import Cart from './pages/Cart';
+import QRCodeDetail from './pages/QRCodeDetail';
+import { CartProvider } from './contexts/CartContext';
+import './styles/global.css';
+import './styles/responsive.css';
 
 const theme = createTheme({
   palette: {
@@ -58,16 +62,20 @@ const theme = createTheme({
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/generate-qr" element={<GenerateQR />} />
-        </Routes>
-      </ThemeProvider>
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <CartProvider>
+        <Router>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/generate" element={<GenerateQR />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/id/:id" element={<QRCodeDetail />} />
+          </Routes>
+        </Router>
+      </CartProvider>
+    </ThemeProvider>
   );
 };
 

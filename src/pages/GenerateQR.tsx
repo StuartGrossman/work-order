@@ -4,72 +4,23 @@ import { QRCodeSVG } from 'qrcode.react';
 import QrCodeIcon from '@mui/icons-material/QrCode';
 import DownloadIcon from '@mui/icons-material/Download';
 import { qrService } from '../services/qrService';
-
-interface ItemData {
-  name: string;
-  description: string;
-  quantity: string;
-  price: string;
-}
+import { QRCode } from '../types/qrCode';
 
 const GenerateQR: React.FC = () => {
-  const [itemData, setItemData] = useState<ItemData>({
+  const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    quantity: '',
     price: ''
   });
-  const [qrValue, setQrValue] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // Handle empty values
-    if (value === '') {
-      setItemData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-      return;
-    }
-    
-    // Handle quantity validation
-    if (name === 'quantity') {
-      // Only allow positive integers
-      if (!/^\d+$/.test(value)) {
-        return;
-      }
-      setItemData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-      return;
-    }
-
-    // Handle price validation
-    if (name === 'price') {
-      // Allow decimal numbers with up to 2 decimal places
-      if (!/^\d*\.?\d{0,2}$/.test(value)) {
-        return;
-      }
-      // Ensure the value is not negative
-      if (parseFloat(value) < 0) {
-        return;
-      }
-      setItemData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-      return;
-    }
-
-    // Handle other fields
-    setItemData(prev => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -77,62 +28,63 @@ const GenerateQR: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsGenerating(true);
-    setError('');
-    setSuccess('');
-    
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
     try {
-      // Create a JSON string of the item data
-      const qrData = JSON.stringify(itemData);
-      setQrValue(qrData);
+      const price = parseFloat(formData.price);
+      if (isNaN(price) || price <= 0) {
+        throw new Error('Please enter a valid price');
+      }
 
-      // Save to Firebase
-      await qrService.saveQRCode({
-        name: itemData.name,
-        quantity: parseInt(itemData.quantity),
-        price: parseFloat(itemData.price),
-        qrCode: qrData
-      });
+      const newQRCode: Omit<QRCode, 'id'> = {
+        name: formData.name,
+        price: price,
+        qrCode: '',
+        createdAt: new Date()
+      };
 
-      setSuccess('QR code generated and saved successfully!');
-      handleReset();
+      const id = await qrService.saveQRCode(newQRCode);
+      
+      // Create QR code data with full URL
+      const qrData = {
+        url: `${window.location.origin}/id/${id}`,
+        id,
+        name: formData.name,
+        price: price
+      };
+
+      const qrCodeString = JSON.stringify(qrData);
+      setQrCode(qrCodeString);
+
+      // Update the QR code with the string
+      await qrService.updateQRCode(id, { qrCode: qrCodeString });
+
+      setSuccess(true);
+      setFormData({ name: '', price: '' });
     } catch (err) {
-      console.error('Error generating QR code:', err);
-      setError('Failed to generate QR code. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to generate QR code');
     } finally {
-      setIsGenerating(false);
+      setLoading(false);
     }
-  };
-
-  const handleReset = () => {
-    setItemData({
-      name: '',
-      description: '',
-      quantity: '',
-      price: ''
-    });
-    setQrValue('');
   };
 
   const handleDownload = () => {
-    const canvas = document.querySelector('svg');
-    if (canvas) {
-      const svgData = new XMLSerializer().serializeToString(canvas);
-      const canvas2 = document.createElement('canvas');
-      const ctx = canvas2.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        canvas2.width = img.width;
-        canvas2.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        const pngFile = canvas2.toDataURL('image/png');
-        const downloadLink = document.createElement('a');
-        downloadLink.download = `qr-code-${itemData.name}.png`;
-        downloadLink.href = pngFile;
-        downloadLink.click();
-      };
-      img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-    }
+    if (!qrCode) return;
+
+    const canvas = document.getElementById('qr-code') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const pngUrl = canvas
+      .toDataURL('image/png')
+      .replace('image/png', 'image/octet-stream');
+    const downloadLink = document.createElement('a');
+    downloadLink.href = pngUrl;
+    downloadLink.download = `qr-code-${formData.name}.png`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
   };
 
   return (
@@ -182,9 +134,9 @@ const GenerateQR: React.FC = () => {
                 <form onSubmit={handleSubmit} aria-label="QR code generation form">
                   <TextField
                     fullWidth
-                    label="Item Name"
+                    label="Name"
                     name="name"
-                    value={itemData.name}
+                    value={formData.name}
                     onChange={handleInputChange}
                     required
                     autoFocus
@@ -193,44 +145,15 @@ const GenerateQR: React.FC = () => {
                       "data-testid": "name-input",
                       style: { fontSize: isMobile ? '16px' : 'inherit' } // Prevent zoom on iOS
                     }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    name="description"
-                    value={itemData.description}
-                    onChange={handleInputChange}
-                    multiline
-                    rows={3}
-                    id="description-input"
-                    inputProps={{ 
-                      "data-testid": "description-input",
-                      style: { fontSize: isMobile ? '16px' : 'inherit' }
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Quantity"
-                    name="quantity"
-                    type="number"
-                    value={itemData.quantity}
-                    onChange={handleInputChange}
-                    required
-                    id="quantity-input"
-                    inputProps={{ 
-                      min: "0",
-                      step: "1",
-                      pattern: "\\d*",
-                      "data-testid": "quantity-input",
-                      style: { fontSize: isMobile ? '16px' : 'inherit' }
-                    }}
+                    error={!!error && error.includes('name')}
+                    helperText={error && error.includes('name') ? error : ''}
                   />
                   <TextField
                     fullWidth
                     label="Price"
                     name="price"
                     type="number"
-                    value={itemData.price}
+                    value={formData.price}
                     onChange={handleInputChange}
                     required
                     id="price-input"
@@ -240,6 +163,8 @@ const GenerateQR: React.FC = () => {
                       "data-testid": "price-input",
                       style: { fontSize: isMobile ? '16px' : 'inherit' }
                     }}
+                    error={!!error && error.includes('price')}
+                    helperText={error && error.includes('price') ? error : ''}
                   />
                   <Box sx={{ 
                     mt: { xs: 2, md: 3 }, 
@@ -252,30 +177,15 @@ const GenerateQR: React.FC = () => {
                       variant="contained"
                       color="primary"
                       fullWidth
-                      disabled={!itemData.name || !itemData.quantity || !itemData.price || isGenerating}
-                      startIcon={isGenerating ? <CircularProgress size={20} /> : <QrCodeIcon />}
+                      disabled={loading || !formData.name || !formData.price}
+                      startIcon={loading ? <CircularProgress size={20} /> : <QrCodeIcon />}
                       data-testid="generate-button"
                       sx={{ 
                         height: { xs: '48px', md: '40px' },
                         fontSize: { xs: '1rem', md: '0.875rem' }
                       }}
                     >
-                      {isGenerating ? 'Generating...' : 'Generate QR Code'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      color="secondary"
-                      onClick={handleReset}
-                      fullWidth
-                      disabled={isGenerating}
-                      data-testid="reset-button"
-                      sx={{ 
-                        height: { xs: '48px', md: '40px' },
-                        fontSize: { xs: '1rem', md: '0.875rem' }
-                      }}
-                    >
-                      Reset
+                      {loading ? 'Generating...' : 'Generate QR Code'}
                     </Button>
                   </Box>
                 </form>
@@ -298,7 +208,7 @@ const GenerateQR: React.FC = () => {
                   justifyContent: 'center'
                 }}
               >
-                {qrValue ? (
+                {qrCode ? (
                   <Box sx={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
@@ -306,12 +216,13 @@ const GenerateQR: React.FC = () => {
                     gap: { xs: 1.5, md: 2 }
                   }}>
                     <QRCodeSVG
-                      value={qrValue}
+                      id="qr-code"
+                      value={qrCode}
                       size={isMobile ? 200 : 256}
                       level="H"
                       includeMargin={true}
                       data-testid="qr-code"
-                      data-value={qrValue}
+                      data-value={qrCode}
                     />
                     <Button
                       variant="contained"
@@ -351,22 +262,22 @@ const GenerateQR: React.FC = () => {
         <Snackbar 
           open={!!error} 
           autoHideDuration={6000} 
-          onClose={() => setError('')}
+          onClose={() => setError(null)}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Alert onClose={() => setError('')} severity="error" sx={{ width: '100%' }}>
+          <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
             {error}
           </Alert>
         </Snackbar>
 
         <Snackbar 
-          open={!!success} 
+          open={success} 
           autoHideDuration={6000} 
-          onClose={() => setSuccess('')}
+          onClose={() => setSuccess(false)}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Alert onClose={() => setSuccess('')} severity="success" sx={{ width: '100%' }}>
-            {success}
+          <Alert onClose={() => setSuccess(false)} severity="success" sx={{ width: '100%' }}>
+            QR code generated successfully!
           </Alert>
         </Snackbar>
       </Container>

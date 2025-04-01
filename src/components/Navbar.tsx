@@ -1,113 +1,57 @@
-import React, { useState } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  Box,
-  IconButton,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemText,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
+import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Badge
+} from '@mui/material';
 import QrCodeIcon from '@mui/icons-material/QrCode';
-import MenuIcon from '@mui/icons-material/Menu';
+import ShoppingCart from '@mui/icons-material/ShoppingCart';
+import { useCart } from '../contexts/CartContext';
 
 const Navbar: React.FC = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const drawer = (
-    <List>
-      <ListItemButton 
-        component={RouterLink} 
-        to="/" 
-        onClick={handleDrawerToggle}
-      >
-        <ListItemText primary="Home" />
-      </ListItemButton>
-      <ListItemButton 
-        component={RouterLink} 
-        to="/generate-qr" 
-        onClick={handleDrawerToggle}
-      >
-        <ListItemText primary="Generate QR" />
-      </ListItemButton>
-    </List>
-  );
+  const { items } = useCart();
+  const itemCount = items.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <AppBar position="static" elevation={1} role="banner">
-      <Toolbar disableGutters>
-        <QrCodeIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+    <AppBar position="fixed">
+      <Toolbar>
         <Typography
           variant="h6"
           noWrap
           component={RouterLink}
           to="/"
           sx={{
-            mr: 2,
-            display: { xs: 'none', md: 'flex' },
-            fontFamily: 'monospace',
-            fontWeight: 700,
-            letterSpacing: '.3rem',
-            color: 'inherit',
-            textDecoration: 'none',
             flexGrow: 1,
+            textDecoration: 'none',
+            color: 'inherit'
           }}
         >
-          QR INVENTORY
+          QR Inventory
         </Typography>
-
-        {/* Mobile menu button */}
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={handleDrawerToggle}
-          sx={{ display: { md: 'none' }, mr: 2 }}
-        >
-          <MenuIcon />
-        </IconButton>
-
-        {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
-          anchor="right"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
-              width: 240,
-              backgroundColor: theme.palette.primary.main,
-              color: theme.palette.primary.contrastText,
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-
-        {/* Desktop menu */}
-        <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-          <Button color="inherit" component={RouterLink} to="/">
-            Home
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/generate-qr">
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            color="inherit"
+            component={RouterLink}
+            to="/generate"
+            startIcon={<QrCodeIcon />}
+          >
             Generate QR
+          </Button>
+          <Button
+            color="inherit"
+            component={RouterLink}
+            to="/cart"
+            startIcon={
+              <Badge badgeContent={itemCount} color="error">
+                <ShoppingCart />
+              </Badge>
+            }
+          >
+            Cart
           </Button>
         </Box>
       </Toolbar>
