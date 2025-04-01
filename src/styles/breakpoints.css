@@ -1,0 +1,41 @@
+/* Breakpoint system */
+:root {
+  /* Mobile first breakpoints */
+  --breakpoint-xs: 0px;    /* Extra small devices */
+  --breakpoint-sm: 600px;  /* Small devices */
+  --breakpoint-md: 960px;  /* Medium devices */
+  --breakpoint-lg: 1280px; /* Large devices */
+  --breakpoint-xl: 1920px; /* Extra large devices */
+
+  /* Container max-widths */
+  --container-xs: 100%;
+  --container-sm: 540px;
+  --container-md: 720px;
+  --container-lg: 960px;
+  --container-xl: 1140px;
+}
+
+/* Media query mixins */
+@media (min-width: 600px) {
+  :root {
+    --container-width: var(--container-sm);
+  }
+}
+
+@media (min-width: 960px) {
+  :root {
+    --container-width: var(--container-md);
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --container-width: var(--container-lg);
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --container-width: var(--container-xl);
+  }
+} 

@@ -1,0 +1,138 @@
+/* Navbar responsive styles */
+@media (max-width: 959px) {
+  .navbar {
+    padding: var(--spacing-2);
+  }
+
+  .navbar-title {
+    font-size: var(--font-size-lg);
+  }
+
+  .navbar-menu {
+    display: none;
+  }
+
+  .navbar-menu-mobile {
+    display: block;
+  }
+
+  .MuiDrawer-paper {
+    background-color: var(--color-primary);
+    color: var(--color-primary-contrast);
+  }
+
+  .MuiListItemButton-root {
+    color: var(--color-primary-contrast);
+  }
+
+  .MuiListItemButton-root:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* GenerateQR form responsive styles */
+@media (max-width: 959px) {
+  .generate-qr-container {
+    flex-direction: column;
+    gap: var(--spacing-4);
+  }
+
+  .generate-qr-form {
+    width: 100%;
+  }
+
+  .qr-code-display {
+    width: 100%;
+    min-height: 300px;
+  }
+
+  .qr-code {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+/* Home page responsive styles */
+@media (max-width: 959px) {
+  .hero-section {
+    padding: var(--spacing-6) var(--spacing-4);
+  }
+
+  .hero-title {
+    font-size: var(--font-size-3xl);
+  }
+
+  .hero-subtitle {
+    font-size: var(--font-size-lg);
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-4);
+  }
+
+  .feature-card {
+    max-width: 100%;
+  }
+}
+
+/* Form responsive styles */
+@media (max-width: 599px) {
+  .form-group {
+    margin-bottom: var(--spacing-3);
+  }
+
+  .form-control {
+    font-size: var(--font-size-base);
+  }
+
+  .button-group {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .button {
+    width: 100%;
+  }
+}
+
+/* QR Code responsive styles */
+@media (max-width: 599px) {
+  .qr-code-container {
+    padding: var(--spacing-3);
+  }
+
+  .qr-code {
+    width: 180px;
+    height: 180px;
+  }
+
+  .qr-code-placeholder {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* Utility responsive classes */
+@media (max-width: 599px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    display: block !important;
+  }
+
+  .stack-mobile {
+    flex-direction: column !important;
+  }
+}
+
+@media (min-width: 600px) {
+  .hide-desktop {
+    display: none !important;
+  }
+
+  .show-desktop {
+    display: block !important;
+  }
+} 
